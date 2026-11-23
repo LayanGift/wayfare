@@ -305,22 +305,37 @@ hours.
 
 ## Load on upstreams
 
-One sweep is roughly sixty-eight Horizon calls across the three corridors —
-NGNC and GHSC each run twelve rungs with pathfinding plus a slippage probe on
-rungs above the probe threshold (28 calls each); KESC short-circuits as
-NO-MARKET after twelve pathfinding calls (12) — plus about twelve counterparty
-requests and two reference-provider calls, near eighty requests every six
-hours. That is negligible for Horizon at this cadence.
+The default sweep is now derived from every registry entry with a non-empty
+fiat `Peg`: eight USDC destination corridors (NGNC, GHSC, KESC, NGNT, USDZ,
+ZARZ, EURMTL and PYUSD). Pending entries remain included so their status is
+measured rather than silently omitted. USDZ and PYUSD are both measured against
+the identity reference pair USD/USD.
 
-The reference providers are hit roughly **once per run** rather than once per
-rung, because `refrate.Cached` collapses a ladder's twelve identical rate
-fetches into one. Without it a single sweep would make 36 rate requests, and a
-free tier would notice. That works out to a few hundred requests a month across
-both providers.
+A priced corridor makes **28 Horizon calls**: twelve `/paths/strict-send`
+requests (one per rung) plus a two-call slippage probe on each of the eight
+rungs above the probe threshold. A NO-MARKET corridor short-circuits after its
+twelve pathfinding calls. The existing measurements establish 28 calls each
+for NGNC and GHSC and 12 for KESC: **68 Horizon calls for the original three**.
+Planning for the five newly included corridors at the priced-corridor rate adds
+up to 140, for **about 208 Horizon calls per sweep**. The conservative ceiling
+if all eight corridors are priceable is **224 Horizon calls**. Actual counts
+fall when a corridor is NO-MARKET; the six-hour interval and sequential
+corridor scheduling are unchanged.
 
-Neither provider needs an API key. That is deliberate: a keyed provider would
-put a secret into the deployment, and this service holds none.
+Counterparty checks add approximately four requests per corridor when enabled
+(about 32 for eight corridors). The reference providers are queried once per
+distinct fiat pair and provider, not once per rung: the registry currently has
+six distinct USD reference pairs (USD/NGN, USD/GHS, USD/KES, USD/USD, USD/ZAR
+and USD/EUR), so at most twelve reference-provider requests per sweep.
+`refrate.Cached` collapses the twelve identical rate fetches within each
+ladder and shares a cached pair across the sweep. On that planning basis, a
+checks-enabled sweep is roughly **252 upstream requests** (208 Horizon, 32
+counterparty and 12 reference-provider requests), with a conservative
+Horizon-only ceiling of 224. These are request-count estimates, not a promise:
+NO-MARKET short-circuits and provider failures change the observed count.
 
+Neither reference provider needs an API key. That is deliberate: a keyed
+provider would put a secret into the deployment, and this service holds none.
 ---
 
 ## Configuration
