@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/rand"
+	"sort"
 	"time"
 
 	"github.com/Wayfare-labs/wayfare/asset"
@@ -44,25 +45,30 @@ func (c Corridor) Key() string {
 	return runstore.CorridorKey(c.Send.Code, c.Receive.Code)
 }
 
-// DefaultCorridors are every registered corridor destination.
+// DefaultCorridors derives every destination from the asset registry.
 //
-// The sweep covers the whole registry so that no verified corridor is
-// measured in one place and served in another: a destination registered in
-// asset is a destination the monitor prices. The case-study trio (USDC-NGNC
-// DIRECT, USDC-GHSC DERIVATIVE, USDC-KESC NO-MARKET) still exercises each
-// integrity state, and the remaining registered corridors extend the same
-// coverage to every verified destination token.
+// Any registered entry with a fiat peg is a corridor destination. This
+// deliberately includes pending entries: their status is a finding to
+// measure and report, not a reason to hide them. Entries without a peg (such
+// as USDC, the settlement asset) are not destinations. USD-pegged assets
+// remain in the sweep and use USD/USD as their identity benchmark.
 func DefaultCorridors() []Corridor {
-	return []Corridor{
-		{Send: asset.USDC(), Receive: asset.NGNC(), ReferenceBase: "USD", ReferenceQuote: "NGN"},
-		{Send: asset.USDC(), Receive: asset.GHSC(), ReferenceBase: "USD", ReferenceQuote: "GHS"},
-		{Send: asset.USDC(), Receive: asset.KESC(), ReferenceBase: "USD", ReferenceQuote: "KES"},
-		{Send: asset.USDC(), Receive: asset.NGNT(), ReferenceBase: "USD", ReferenceQuote: "NGN"},
-		{Send: asset.USDC(), Receive: asset.USDZ(), ReferenceBase: "USD", ReferenceQuote: "USD"},
-		{Send: asset.USDC(), Receive: asset.ZARZ(), ReferenceBase: "USD", ReferenceQuote: "ZAR"},
-		{Send: asset.USDC(), Receive: asset.EURMTL(), ReferenceBase: "USD", ReferenceQuote: "EUR"},
-		{Send: asset.USDC(), Receive: asset.PYUSD(), ReferenceBase: "USD", ReferenceQuote: "USD"},
+	corridors := make([]Corridor, 0)
+	for _, entry := range asset.Registry() {
+		if entry.Peg == "" {
+			continue
+		}
+		corridors = append(corridors, Corridor{
+			Send:           asset.USDC(),
+			Receive:        asset.Stellar(entry.Code, entry.Issuer),
+			ReferenceBase:  "USD",
+			ReferenceQuote: entry.Peg,
+		})
 	}
+	sort.Slice(corridors, func(i, j int) bool {
+	return corridors[i].Key() < corridors[j].Key()
+	})
+	return corridors
 }
 
 // DefaultInterval is how often corridors are measured.
