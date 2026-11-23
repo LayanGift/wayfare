@@ -524,30 +524,65 @@ func TestSchedulerNeedsAnEngine(t *testing.T) {
 	}
 }
 
-// TestDefaultCorridorsCoverEveryState documents why the sweep includes the
-// case-study trio: each corridor exercises a different integrity state, so a
-// deployment measuring them continuously exercises the whole taxonomy. The
-// sweep now covers every registered corridor destination; this test guards the
-// trio that anchors it.
-func TestDefaultCorridorsCoverEveryState(t *testing.T) {
+// TestDefaultCorridorsCoverRegistry ensures the monitor sweep is derived
+// from every registered fiat-pegged destination. Building the expected set
+// from Registry means adding a destination without including it in the sweep
+// fails this test automatically. Pending entries remain included, while the
+// unpegged settlement asset is excluded.
+func TestDefaultCorridorsCoverRegistry(t *testing.T) {
+	registry := asset.Registry()
+	want := make(map[string]asset.Entry)
+	for _, entry := range registry {
+		if entry.Peg == "" {
+			continue
+		}
+		want[runstore.CorridorKey(asset.USDC().Code, entry.Code)] = entry
+	}
+
 	got := DefaultCorridors()
-	if len(got) == 0 {
-		t.Fatal("no default corridors; the sweep must measure at least the case-study trio")
+	if len(got) != len(want) {
+		t.Fatalf("DefaultCorridors returned %d corridors, registry has %d fiat-pegged destinations", len(got), len(want))
 	}
-	// The case-study trio is still the spine of the sweep: one corridor per
-	// integrity state (NGNC DIRECT, GHSC DERIVATIVE, KESC NO-MARKET).
-	wantKeys := map[string]bool{"USDC-NGNC": false, "USDC-GHSC": false, "USDC-KESC": false}
-	for _, c := range got {
-		if _, ok := wantKeys[c.Key()]; ok {
-			wantKeys[c.Key()] = true
+
+	seen := make(map[string]bool, len(got))
+	previousKey := ""
+	for _, corridor := range got {
+		key := corridor.Key()
+		entry, ok := want[key]
+		if !ok {
+			t.Errorf("unexpected corridor %s; it is not a registered fiat-pegged destination", key)
+			continue
 		}
-		if c.ReferenceQuote == "" || c.ReferenceBase == "" {
-			t.Errorf("%s has no reference pair; it could not be scored", c.Key())
+		if seen[key] {
+			t.Errorf("duplicate corridor %s", key)
+		}
+		seen[key] = true
+		if corridor.Send.Code != asset.USDC().Code || corridor.Send.Issuer != asset.USDC().Issuer {
+			t.Errorf("%s send asset = %s, want registered settlement asset USDC", key, corridor.Send)
+		}
+		if corridor.Receive.Code != entry.Code || corridor.Receive.Issuer != entry.Issuer {
+			t.Errorf("%s receive asset = %s, want registry identity %s:%s", key, corridor.Receive, entry.Code, entry.Issuer)
+		}
+		if corridor.ReferenceBase != "USD" || corridor.ReferenceQuote != entry.Peg {
+			t.Errorf("%s reference pair = %s/%s, want USD/%s", key, corridor.ReferenceBase, corridor.ReferenceQuote, entry.Peg)
+		}
+		if previousKey != "" && key < previousKey {
+			t.Errorf("corridors are not sorted: %s appeared before %s", previousKey, key)
+		}
+		previousKey = key
+	}
+
+	for key := range want {
+		if !seen[key] {
+			t.Errorf("registered corridor %s is missing from the default sweep", key)
 		}
 	}
-	for key, seen := range wantKeys {
-		if !seen {
-			t.Errorf("default corridors are missing %s", key)
+
+	// These two entries are intentionally pending and must still be measured:
+	// their issuer-declared status is a finding, not a reason to omit them.
+	for _, key := range []string{"USDC-GHSC", "USDC-KESC"} {
+		if !seen[key] {
+			t.Errorf("pending corridor %s was excluded from the sweep", key)
 		}
 	}
 }
