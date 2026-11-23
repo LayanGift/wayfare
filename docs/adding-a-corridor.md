@@ -108,7 +108,12 @@ The fields do several crucial jobs:
 - **`VerificationDate` & `SourceURL`** record when and where the issuer document was verified.
 - **`HomeDomain`** binds the asset to the domain publishing its `stellar.toml`.
 
-Lookup maps (`known`, `fiatPegs`, and `homeDomains`) are derived automatically from `registry` at startup.
+Lookup maps (`known`, `fiatPegs`, and `homeDomains`) are derived automatically from `registry` at startup. The scheduled monitor also derives its default sweep from this same
+registry: every entry with a non-empty `Peg` is measured automatically after
+it is registered. No separate corridor list or monitor code change is needed.
+This includes `pending` entries such as GHSC and KESC, because pending is a
+reported issuer status rather than a reason to skip measurement. USD-pegged
+entries are included too and use the identity benchmark `USD/USD`.
 
 **c. The constructor (optional).** Add a convenience constructor if the token is
 referenced directly across packages and tests:
