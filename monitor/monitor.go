@@ -66,7 +66,7 @@ func DefaultCorridors() []Corridor {
 		})
 	}
 	sort.Slice(corridors, func(i, j int) bool {
-	return corridors[i].Key() < corridors[j].Key()
+		return corridors[i].Key() < corridors[j].Key()
 	})
 	return corridors
 }
