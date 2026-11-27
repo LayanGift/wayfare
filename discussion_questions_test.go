@@ -63,14 +63,19 @@ func TestQuestionsDocQuotesTheCodeItRestsOn(t *testing.T) {
 			quote: "One Horizon call per rung — twelve with route.DefaultSizes, with the thin-liquidity warning derived from those rungs",
 		},
 		{
-			claim: "deployment.md puts a sweep at 'roughly thirty-six Horizon calls'",
+			claim: "deployment.md identifies the six registry-derived scheduled corridors",
 			file:  "docs/deployment.md",
-			quote: "One sweep is roughly thirty-six Horizon calls across the three corridors",
+			quote: "The registry currently yields six scheduled corridors: NGNC, GHSC,",
 		},
 		{
-			claim: "deployment.md puts a sweep at 'near fifty requests every six hours'",
+			claim: "deployment.md gives the six-corridor Horizon-call estimate",
 			file:  "docs/deployment.md",
-			quote: "near fifty requests every six hours",
+			quote: "six scheduled corridors therefore make **72",
+		},
+		{
+			claim: "deployment.md gives the total upstream-request estimate",
+			file:  "docs/deployment.md",
+			quote: "about **98 upstream requests",
 		},
 		{
 			claim: "writeError publishes a machine-readable code alongside the prose",
