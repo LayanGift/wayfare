@@ -67,7 +67,7 @@ func DefaultCorridors() []Corridor {
 	return corridors
 }
 
-// // DefaultInterval is how often corridors are measured.
+// DefaultInterval is how often corridors are measured.
 //
 // Six hours. The corridors measured so far move on the scale of days — the
 // 2026-08-04 and 2026-08-08 runs differ by about a percent — so a shorter
