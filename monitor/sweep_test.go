@@ -510,10 +510,11 @@ func TestRecordedGapIsVerifiable(t *testing.T) {
 
 // TestSweepCoversEveryRegisteredCorridor pins the sweep set to the registry.
 //
-// Every verified corridor destination in asset must appear in
+// Every registered non-USD fiat-pegged destination in asset must appear in
 // DefaultCorridors(), so a newly registered corridor cannot be measured in
-// asset and silently skipped by the monitor. Removing a corridor from the
-// sweep makes this test fail.
+// asset and silently skipped by the monitor. USD-pegged destinations remain
+// excluded pending issue #671. Removing a corridor from the sweep makes this
+// test fail.
 func TestSweepCoversEveryRegisteredCorridor(t *testing.T) {
 	sweep := make(map[string]Corridor)
 	for _, c := range DefaultCorridors() {
