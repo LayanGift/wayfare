@@ -55,7 +55,8 @@ trust this document. Line numbers are at `74c1f17`.
 
 Asked in [#481](https://github.com/Wayfare-labs/wayfare/issues/481), 2026-09-24.
 **Fixed by [#863](https://github.com/Wayfare-labs/wayfare/issues/863).** The two
-places that disagreed now state the measured count:
+places that disagreed now state the corrected per-corridor count and current
+registry-wide estimate:
 
 `server/api.go:59-64` says:
 
@@ -66,13 +67,18 @@ places that disagreed now state the measured count:
 > // a request actually gets is derived from its rung count (see budgetFor)
 > // and never exceeds this.
 
-`docs/deployment.md:308-312` says:
+`docs/deployment.md:308-320` says:
 
-> One sweep is roughly thirty-six Horizon calls across the three corridors —
-> twelve pathfinding calls per corridor, with the thin-liquidity warning derived
-> from those rungs instead of a separate probe on every rung above 10 — plus
-> about twelve counterparty requests and two reference-provider calls, near
-> fifty requests every six hours.
+> The registry currently yields six scheduled corridors: NGNC, GHSC,
+> KESC, NGNT, ZARZ and EURMTL. USDZ and PYUSD are USD-pegged swaps and remain
+> out until issue #671 defines a meaningful USD-to-USD reference.
+>
+> The six scheduled corridors therefore make **72 Horizon calls per six-hour
+> sweep**.
+>
+> Allowing roughly four counterparty requests per corridor and two
+> reference-provider calls puts the whole sweep at about **98 upstream requests
+> every six hours**.
 
 The reporter measured **28** calls for a priced corridor, not 12: twelve
 `/paths/strict-send` requests for the ladder, plus a two-call slippage probe
@@ -83,8 +89,11 @@ because a `NO-MARKET` corridor short-circuits before the probe.
 
 The probe was real; the arithmetic in both places was not. #863 stops paying for
 it on ladder rungs and derives the warning from the rung already priced, so a
-default corridor makes **12** calls and a sweep makes **36**. A counting proxy
-over the recorded USDC/NGNC snapshot now pins that number.
+default corridor makes **12** calls. With the six registry-driven corridors in
+this PR, a sweep makes **72 Horizon calls**; including the estimated
+counterparty and reference-provider requests, the total is about **98 upstream
+requests** every six hours. A counting proxy over the recorded USDC/NGNC
+snapshot now pins the per-corridor count.
 
 ### 2. "Why does a self-contained page carry a Cloudflare challenge script?"
 
